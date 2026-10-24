@@ -1,0 +1,3 @@
+import SpeakeasyKit
+
+SpeakeasyApp.main()

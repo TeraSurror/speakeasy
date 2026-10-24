@@ -1,0 +1,40 @@
+# Speakeasy
+
+A native macOS menu bar manager. See `Speakeasy — macOS Menu Bar Manager Spec.md`.
+
+Status: **Milestone 1 (MVP)** implemented.
+
+## Build and run
+
+```
+swift test          # unit tests
+./build.sh          # builds build/Speakeasy.app (ad-hoc signed)
+open build/Speakeasy.app
+```
+
+Requires macOS 14+. Bundle ID: `com.harshshelar.speakeasy`.
+
+## Layout
+
+- `Sources/SpeakeasyKit/MenuBar/` — all `NSStatusItem` / AppKit menu bar code
+- `Sources/SpeakeasyKit/Services/` — protocols plus real implementations (settings, login item, hotkeys)
+- `Sources/SpeakeasyKit/UI/` — SwiftUI views (never touch status items)
+- `Tests/SpeakeasyTests/` — fakes (`FakeHost`, `FakeScheduler`, `FakeMenuBar`, ...) and unit tests
+
+## M1 manual verification (notched MacBook, with/without external display, light and dark)
+
+| Feature | Check |
+| --- | --- |
+| F1 | Launch. ⌘-drag an icon left of the `\|` divider. Click the glass: the icon vanishes/reappears without flicker. Quit and relaunch: the hidden state is restored. The divider is visible only while revealed. ⌘-drag the glass itself left of the divider, then try to hide: nothing hides. |
+| F2 | First launch shows the welcome window with the ⌘-drag animation (also under right-click → Welcome Guide). Quit/relaunch: Speakeasy's items stay in the same positions. |
+| F3 | Reveal, wait the configured delay (Settings → General): it hides. Reveal, click in another app's window or switch apps: it hides. Reveal, open a revealed item's menu and wait past the delay: it stays until the menu closes. Set the delay to Off: no timer rehide. |
+| F4 | ⌥⌘B toggles. Settings → Hotkeys: record ⌘Space; a conflict warning appears. |
+| F5 | On a notched Mac, fill the menu bar until items reach the notch: a red dot appears on the glass. Click the glass: an explanation popover lists the apps. Right-click menu has "Items Hidden by the Notch…". On a non-notched display nothing appears. |
+| F6 | Settings → General → Launch at login is off by default; toggling it appears in System Settings → General → Login Items; the toggle reflects changes made there. |
+| F7 | Right-click the glass → Settings… opens General / Appearance / Hotkeys / About; right-click → Quit quits. About → Copy Diagnostics puts a report on the clipboard. |
+
+## Known limitations (M1)
+
+- No martini SF Symbol exists; the "Martini glass" icon option uses `wineglass`.
+- Hotkey conflicts are detected against macOS system shortcuts only; other apps' global hotkeys can't be observed.
+- Notch overflow detection reads status item window frames. If macOS removes overflowed items' windows entirely, they can't be detected.

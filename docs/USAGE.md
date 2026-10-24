@@ -205,3 +205,7 @@ Use `/usr/bin/log` explicitly: in zsh, plain `log` is a shell builtin.
 ## What is not included
 
 Some features in the original plan were deliberately left out: **search** (a hotkey that lists and clicks any icon), **rules** (show icons on conditions such as battery or Wi‑Fi), **profiles** (named layouts), and **presentation mode**. See the project spec in the repository for details.
+
+## License
+
+Speakeasy is released under the [MIT License](https://github.com/TeraSurror/speakeasy/blob/main/LICENSE).

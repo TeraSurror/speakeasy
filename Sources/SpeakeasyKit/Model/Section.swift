@@ -8,6 +8,8 @@ public struct MenuBarItem: Identifiable, Equatable, Sendable {
     /// Bundle ID (or app name) plus left-to-right index within that app.
     public var id: String
     public var appName: String
+    /// The status item window's title, when macOS reports one; part of the identity when unique per app.
+    public var title: String?
     public var bundleID: String?
     public var pid: Int32
     public var windowID: UInt32
@@ -16,11 +18,12 @@ public struct MenuBarItem: Identifiable, Equatable, Sendable {
     public var section: Section
 
     public init(
-        id: String, appName: String, bundleID: String? = nil, pid: Int32 = 0,
+        id: String, appName: String, title: String? = nil, bundleID: String? = nil, pid: Int32 = 0,
         windowID: UInt32 = 0, frame: CGRect, section: Section = .visible
     ) {
         self.id = id
         self.appName = appName
+        self.title = title
         self.bundleID = bundleID
         self.pid = pid
         self.windowID = windowID
@@ -29,19 +32,37 @@ public struct MenuBarItem: Identifiable, Equatable, Sendable {
     }
 }
 
+/// Where Speakeasy's own separators sit, in global x. Items left of a separator belong to its section.
+public struct SeparatorFrames: Equatable, Sendable {
+    public var hiddenMinX: CGFloat
+    public var alwaysHiddenMinX: CGFloat
+    /// Identifies which display's menu bar Speakeasy lives in.
+    public var toggleMidX: CGFloat
+
+    public init(hiddenMinX: CGFloat, alwaysHiddenMinX: CGFloat, toggleMidX: CGFloat) {
+        self.hiddenMinX = hiddenMinX
+        self.alwaysHiddenMinX = alwaysHiddenMinX
+        self.toggleMidX = toggleMidX
+    }
+}
+
 public struct ToggleAppearance: Equatable, Sendable {
     public var icon: ToggleIcon
     public var isHidden: Bool
     public var showSeparator: Bool
     public var hasBadge: Bool
+    /// Whether the always-hidden section is also revealed. Only ever true while `isHidden` is false.
+    public var alwaysHiddenRevealed: Bool
     /// Slide the items in and out instead of switching instantly.
     public var animates: Bool
 
-    public init(icon: ToggleIcon, isHidden: Bool, showSeparator: Bool, hasBadge: Bool = false, animates: Bool = true) {
+    public init(icon: ToggleIcon, isHidden: Bool, showSeparator: Bool, hasBadge: Bool = false,
+                alwaysHiddenRevealed: Bool = false, animates: Bool = true) {
         self.icon = icon
         self.isHidden = isHidden
         self.showSeparator = showSeparator
         self.hasBadge = hasBadge
+        self.alwaysHiddenRevealed = alwaysHiddenRevealed
         self.animates = animates
     }
 }

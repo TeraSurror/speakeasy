@@ -35,6 +35,8 @@ public struct Settings: Codable, Equatable, Sendable {
     public var toggleIcon: ToggleIcon = .martini
     public var showSeparator = true
     public var animateTransitions = true
+    /// Hovering over empty menu bar space reveals the hidden section (F12).
+    public var showOnHover = false
     /// Whether the hidden section was collapsed when the app last ran.
     public var isHidden = true
     public var onboardingCompleted = false
@@ -52,6 +54,7 @@ public struct Settings: Codable, Equatable, Sendable {
         toggleIcon = try c.decodeIfPresent(ToggleIcon.self, forKey: .toggleIcon) ?? d.toggleIcon
         showSeparator = try c.decodeIfPresent(Bool.self, forKey: .showSeparator) ?? d.showSeparator
         animateTransitions = try c.decodeIfPresent(Bool.self, forKey: .animateTransitions) ?? d.animateTransitions
+        showOnHover = try c.decodeIfPresent(Bool.self, forKey: .showOnHover) ?? d.showOnHover
         isHidden = try c.decodeIfPresent(Bool.self, forKey: .isHidden) ?? d.isHidden
         onboardingCompleted = try c.decodeIfPresent(Bool.self, forKey: .onboardingCompleted) ?? d.onboardingCompleted
     }

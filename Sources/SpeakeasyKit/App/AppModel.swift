@@ -9,6 +9,8 @@ public final class AppModel: ObservableObject {
     }
     @Published public private(set) var launchAtLogin: Bool
     @Published public var launchAtLoginError: String?
+    /// Every discovered status item with its section; refreshed on app launch/quit and display changes.
+    @Published public var items: [MenuBarItem] = []
     @Published public var notchItems: [MenuBarItem] = []
     @Published public var hotkeyConflict: String?
 

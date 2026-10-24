@@ -1,6 +1,7 @@
 import XCTest
 @testable import SpeakeasyKit
 
+@MainActor
 final class NotchDetectorTests: XCTestCase {
     // 14" MacBook Pro-like: 1512 wide, notch from 650 to 862, 32 pt menu bar.
     private let notched = ScreenInfo(

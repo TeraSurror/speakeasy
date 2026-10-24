@@ -9,7 +9,9 @@ final class AppController {
 
     private let scheduler: Scheduling = DispatchScheduler()
     private let screens: ScreenProviding = NSScreenProvider()
-    private let itemService: MenuBarItemService = WindowListItemService()
+    private var itemService: MenuBarItemService?
+    private var itemObserver: ItemChangeObserving?
+    private var hover: ShowOnHoverController?
     private let hotkeys: HotkeyRegistering
     private let detector = NotchDetector()
     private let outsideMonitor = OutsideInteractionMonitor()
@@ -37,11 +39,17 @@ final class AppController {
 
         let host = StatusItemHost()
         self.host = host
+        itemService = WindowListItemService(separators: host, screens: screens)
         let sections = SectionController(
             host: host, scheduler: scheduler, icon: settings.toggleIcon, showSeparator: settings.showSeparator,
             animates: settings.animateTransitions)
         self.sections = sections
         sections.onHiddenChanged = { [weak self] hidden in self?.hiddenChanged(hidden) }
+        // Revealing or collapsing the always-hidden section follows the same auto-rehide rules as F3.
+        sections.onAlwaysHiddenChanged = { [weak self] _ in
+            self?.rehide?.arm()
+            self?.scheduleNotchRefresh(after: 0.5)
+        }
 
         rehide = RehideTimer(scheduler: scheduler, menus: PopupMenuDetector()) { [weak self] in
             self?.sections?.hide()
@@ -49,6 +57,7 @@ final class AppController {
 
         host.onToggleClick = { [weak self] click in self?.handle(click) }
         hotkeys.setHandler(for: .toggleHiddenSection) { [weak self] in self?.sections?.toggle() }
+        hotkeys.setHandler(for: .toggleAlwaysHidden) { [weak self] in self?.sections?.toggleAlwaysHidden() }
 
         model.showWelcome = { [weak self] in self.map { $0.windows.showOnboarding(model: $0.model) } }
         model.diagnostics = { [weak self] in self.map { Diagnostics.report(model: $0.model, screens: $0.screens) } ?? "" }
@@ -60,16 +69,16 @@ final class AppController {
 
         sections.start(restoringHidden: settings.isHidden)
 
-        let center = NotificationCenter.default
-        center.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.scheduleNotchRefresh() }
-        }
-        let workspace = NSWorkspace.shared.notificationCenter
-        for name in [NSWorkspace.didLaunchApplicationNotification, NSWorkspace.didTerminateApplicationNotification] {
-            workspace.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.scheduleNotchRefresh() }
-            }
-        }
+        hover = ShowOnHoverController(
+            monitor: NSEventPointerMonitor(), screens: screens, scheduler: scheduler,
+            rightLimit: { [weak self] screen in self?.hoverRightLimit(on: screen) },
+            reveal: { [weak self] in self?.sections?.show() })
+        updateHover()
+
+        let observer = NotificationItemChangeObserver(scheduler: scheduler)
+        observer.onChange = { [weak self] in self?.scheduleNotchRefresh() }
+        observer.start()
+        itemObserver = observer
         scheduleNotchRefresh(after: 1.5)
 
         if !settings.onboardingCompleted {
@@ -80,6 +89,7 @@ final class AppController {
     // MARK: Settings changes
 
     private func apply(_ settings: Settings) {
+        updateHover(showOnHover: settings.showOnHover)
         sections?.update(icon: settings.toggleIcon, showSeparator: settings.showSeparator, animates: settings.animateTransitions)
         rehide?.delay = settings.rehideEnabled ? settings.rehideDelay : nil
         if sections?.isHidden == false {
@@ -90,6 +100,7 @@ final class AppController {
 
     private func hiddenChanged(_ hidden: Bool) {
         model.settings.isHidden = hidden
+        updateHover(isHidden: hidden)
         if hidden {
             rehide?.disarm()
             outsideMonitor.stop()
@@ -98,6 +109,21 @@ final class AppController {
             updateOutsideMonitor(shown: true, enabled: model.settings.rehideOnClickOutside)
         }
         scheduleNotchRefresh(after: 0.5)
+    }
+
+    private func updateHover(showOnHover: Bool? = nil, isHidden: Bool? = nil) {
+        let enabled = showOnHover ?? model.settings.showOnHover
+        let hidden = isHidden ?? sections?.isHidden ?? false
+        hover?.setActive(enabled && hidden)
+    }
+
+    /// The pointer must stay left of the leftmost visible status item and of the toggle.
+    private func hoverRightLimit(on screen: ScreenInfo) -> CGFloat? {
+        let visible = model.items.filter {
+            $0.section == .visible && $0.frame.midX >= screen.cgFrame.minX && $0.frame.midX < screen.cgFrame.maxX
+        }
+        let toggle = host?.separatorFrames.map { $0.toggleMidX - 15 }
+        return ([toggle] + visible.map { Optional($0.frame.minX) }).compactMap { $0 }.min()
     }
 
     private func updateOutsideMonitor(shown: Bool, enabled: Bool) {
@@ -114,7 +140,9 @@ final class AppController {
         switch click {
         case .menu:
             showMenu()
-        case .primary, .alternate:
+        case .alternate:
+            sections?.toggleAlwaysHidden()
+        case .primary:
             if let signature = notchSignature, signature != acknowledgedNotchSignature {
                 acknowledgedNotchSignature = signature
                 showNotchExplanation()
@@ -132,6 +160,8 @@ final class AppController {
         }
         let toggleTitle = sections?.isHidden == false ? "Hide Items" : "Show Hidden Items"
         menu.addItem(ActionMenuItem(title: toggleTitle) { [weak self] in self?.sections?.toggle() })
+        let alwaysTitle = sections?.isAlwaysHiddenRevealed == true ? "Hide Always-Hidden Items" : "Show Always-Hidden Items"
+        menu.addItem(ActionMenuItem(title: alwaysTitle) { [weak self] in self?.sections?.toggleAlwaysHidden() })
         menu.addItem(.separator())
         menu.addItem(ActionMenuItem(title: "Settings…", keyEquivalent: ",") { [weak self] in self?.openSettings() })
         menu.addItem(ActionMenuItem(title: "Welcome Guide…") { [weak self] in self.map { $0.windows.showOnboarding(model: $0.model) } })
@@ -163,8 +193,12 @@ final class AppController {
     }
 
     private func refreshNotch() {
-        let ignored = host?.separatorWindowNumber.flatMap { UInt32(exactly: $0) }
-        let items = itemService.currentItems().filter { $0.windowID != ignored }
+        guard let itemService else { return }
+        let items = itemService.currentItems()
+        if items != model.items {
+            Log.discovery.info("Discovered \(items.count) items")
+            model.items = items
+        }
         let affected = detector.overflowingItems(in: items, screens: screens.screens)
         if affected != model.notchItems {
             Log.discovery.info("Notch overflow: \(affected.map(\.appName).joined(separator: ", "))")

@@ -46,6 +46,22 @@ final class FakeHost: StatusItemHosting {
     }
 }
 
+struct FakeWindowList: WindowListing {
+    var windows: [[String: Any]]
+    func windowInfo() -> [[String: Any]] { windows }
+}
+
+@MainActor
+final class FakeSeparators: SeparatorLocating {
+    var separatorFrames: SeparatorFrames?
+    var ownWindowIDs: Set<UInt32> = []
+}
+
+struct FakeScreens: ScreenProviding {
+    var infos: [ScreenInfo]
+    @MainActor var screens: [ScreenInfo] { infos }
+}
+
 struct FakeMenuBar: MenuBarItemService {
     var items: [MenuBarItem]
     func currentItems() -> [MenuBarItem] { items }

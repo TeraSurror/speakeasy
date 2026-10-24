@@ -7,6 +7,11 @@ extension KeyboardShortcuts.Name {
         "toggleHiddenSection",
         default: .init(.b, modifiers: [.option, .command])
     )
+
+    static let toggleAlwaysHidden = Self(
+        "toggleAlwaysHidden",
+        default: .init(.b, modifiers: [.option, .command, .shift])
+    )
 }
 
 public struct KeyboardShortcutsHotkeys: HotkeyRegistering {
@@ -15,6 +20,7 @@ public struct KeyboardShortcutsHotkeys: HotkeyRegistering {
     private func name(for action: HotkeyAction) -> KeyboardShortcuts.Name {
         switch action {
         case .toggleHiddenSection: .toggleHiddenSection
+        case .toggleAlwaysHidden: .toggleAlwaysHidden
         }
     }
 

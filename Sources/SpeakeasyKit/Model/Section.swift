@@ -35,12 +35,15 @@ public struct MenuBarItem: Identifiable, Equatable, Sendable {
 /// Where Speakeasy's own separators sit, in global x. Items left of a separator belong to its section.
 public struct SeparatorFrames: Equatable, Sendable {
     public var hiddenMinX: CGFloat
+    /// Right edge of the hidden-section separator: where the visible section begins.
+    public var hiddenMaxX: CGFloat
     public var alwaysHiddenMinX: CGFloat
     /// Identifies which display's menu bar Speakeasy lives in.
     public var toggleMidX: CGFloat
 
-    public init(hiddenMinX: CGFloat, alwaysHiddenMinX: CGFloat, toggleMidX: CGFloat) {
+    public init(hiddenMinX: CGFloat, alwaysHiddenMinX: CGFloat, toggleMidX: CGFloat, hiddenMaxX: CGFloat? = nil) {
         self.hiddenMinX = hiddenMinX
+        self.hiddenMaxX = hiddenMaxX ?? hiddenMinX + 10
         self.alwaysHiddenMinX = alwaysHiddenMinX
         self.toggleMidX = toggleMidX
     }

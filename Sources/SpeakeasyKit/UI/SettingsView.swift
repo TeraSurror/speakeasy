@@ -7,6 +7,8 @@ struct SettingsView: View {
         TabView {
             GeneralTab()
                 .tabItem { Label("General", systemImage: "gearshape") }
+            LayoutTab()
+                .tabItem { Label("Layout", systemImage: "rectangle.3.group") }
             AppearanceTab()
                 .tabItem { Label("Appearance", systemImage: "paintbrush") }
             HotkeysTab()

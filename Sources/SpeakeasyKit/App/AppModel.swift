@@ -1,5 +1,12 @@
 import SwiftUI
 
+public enum MoveStatus: Equatable {
+    case idle
+    case moving(String)
+    case done(String)
+    case failed(String)
+}
+
 @MainActor
 public final class AppModel: ObservableObject {
     @Published public var settings: Settings {
@@ -14,6 +21,15 @@ public final class AppModel: ObservableObject {
     @Published public var notchItems: [MenuBarItem] = []
     @Published public var hotkeyConflict: String?
 
+    @Published public var moveStatus: MoveStatus = .idle
+    @Published public private(set) var accessibilityTrusted = false
+
+    var mover: ItemMoving?
+    var accessibility: AccessibilityPermission? {
+        didSet { refreshAccessibility() }
+    }
+    var iconProvider: (MenuBarItem) -> NSImage? = { _ in nil }
+    var refreshItems: () -> Void = {}
     var showWelcome: () -> Void = {}
     var diagnostics: () -> String = { "" }
 
@@ -56,5 +72,52 @@ public final class AppModel: ObservableObject {
             return
         }
         hotkeyConflict = conflicts.conflict(for: combo)
+    }
+
+    // MARK: Layout (F10)
+
+    public func icon(for item: MenuBarItem) -> NSImage? { iconProvider(item) }
+
+    public func refreshAccessibility() {
+        let trusted = accessibility?.isTrusted ?? false
+        guard trusted != accessibilityTrusted else { return }
+        accessibilityTrusted = trusted
+        refreshItems() // item ownership comes from Accessibility, so rediscover when it changes
+    }
+
+    public func requestAccessibility() {
+        accessibility?.requestPrompt()
+        refreshAccessibility()
+    }
+
+    public func move(itemID: String, to section: Section) {
+        Task { await run(moves: [itemID], to: section) }
+    }
+
+    public func moveOverflowFromNotch() {
+        let ids = notchItems.map(\.id)
+        guard !ids.isEmpty else { return }
+        Task { await run(moves: ids, to: .hidden) }
+    }
+
+    func run(moves ids: [String], to section: Section) async {
+        guard let mover else { return }
+        if case .moving = moveStatus { return }
+        var failures: [String] = []
+        var moved = 0
+        for id in ids {
+            let name = items.first { $0.id == id }?.appName ?? id
+            moveStatus = .moving(name)
+            switch await mover.move(itemID: id, to: section) {
+            case .moved: moved += 1
+            case .failed(let failure): failures.append("\(name): \(failure.message)")
+            }
+        }
+        refreshItems()
+        if let first = failures.first {
+            moveStatus = .failed(failures.count == 1 ? first : "\(failures.count) items couldn't be moved. \(first)")
+        } else {
+            moveStatus = .done(moved == 1 ? "Moved." : "Moved \(moved) items.")
+        }
     }
 }

@@ -51,6 +51,11 @@ struct FakeWindowList: WindowListing {
     func windowInfo() -> [[String: Any]] { windows }
 }
 
+struct FakeExtras: ExtrasMenuBarReading {
+    var items: [ExtrasMenuItem] = []
+    func extrasItems() -> [ExtrasMenuItem] { items }
+}
+
 @MainActor
 final class FakeSeparators: SeparatorLocating {
     var separatorFrames: SeparatorFrames?

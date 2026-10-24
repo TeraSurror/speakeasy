@@ -86,7 +86,8 @@ public final class StatusItemHost: StatusItemHosting, SeparatorLocating {
         guard let toggle = toggleItem.button?.window?.frame, toggle.width > 0,
               let hidden = separator.item.button?.window?.frame, hidden.width > 0,
               let always = alwaysHiddenSeparator.item.button?.window?.frame, always.width > 0 else { return nil }
-        return SeparatorFrames(hiddenMinX: hidden.minX, alwaysHiddenMinX: always.minX, toggleMidX: toggle.midX)
+        return SeparatorFrames(
+            hiddenMinX: hidden.minX, alwaysHiddenMinX: always.minX, toggleMidX: toggle.midX, hiddenMaxX: hidden.maxX)
     }
 
     public var ownWindowIDs: Set<UInt32> {

@@ -40,25 +40,61 @@ final class ItemDiscoveryTests: XCTestCase {
         return info
     }
 
-    private func service(_ windows: [[String: Any]], separators: SeparatorFrames?, own: Set<UInt32> = []) -> WindowListItemService {
+    private func service(
+        _ windows: [[String: Any]], separators: SeparatorFrames?, own: Set<UInt32> = [], extras: [ExtrasMenuItem] = []
+    ) -> WindowListItemService {
         let fake = FakeSeparators()
         fake.separatorFrames = separators
         fake.ownWindowIDs = own
         let screen = ScreenInfo(cgFrame: CGRect(x: 0, y: 0, width: 1500, height: 900))
-        return WindowListItemService(windows: FakeWindowList(windows: windows), separators: fake, screens: FakeScreens(infos: [screen]))
+        return WindowListItemService(windows: FakeWindowList(windows: windows), extras: FakeExtras(items: extras), separators: fake, screens: FakeScreens(infos: [screen]))
     }
 
-    func testPushedOffItemsAreDiscoveredWithTheirSection() {
+    private func extra(_ app: String, x: CGFloat, width: CGFloat = 20, label: String? = nil, identifier: String? = nil) -> ExtrasMenuItem {
+        ExtrasMenuItem(pid: 7, appName: app, bundleID: "com.test.\(app)", label: label, identifier: identifier,
+                       frame: CGRect(x: x, y: 5, width: width, height: 22))
+    }
+
+    func testPushedOffItemsAreAttributedToTheirAppAndSection() {
         let seps = SeparatorFrames(hiddenMinX: -9000, alwaysHiddenMinX: -19000, toggleMidX: 1400)
+        // macOS 26: every window is owned by Control Center; windows are wider than the AX frames inside them.
         let list = [
-            window("Alpha", x: -19500, id: 1, onscreen: false),
-            window("Beta", x: -9500, id: 2, onscreen: false),
-            window("Gamma", x: 1100, id: 3),
-            window("Placeholder", x: -2074, width: 5016, id: 4, onscreen: false),
+            window("Control Center", x: -19510, width: 40, id: 1, onscreen: false),
+            window("Control Center", x: -9510, width: 40, id: 2, onscreen: false),
+            window("Control Center", x: 1090, width: 40, id: 3),
+            window("Control Center", x: -2074, width: 5016, id: 4, onscreen: false), // placeholder
+            window("Control Center", x: -7000, width: 40, id: 5, onscreen: false),   // placeholder
         ]
-        let items = service(list, separators: seps).currentItems()
+        let extras = [
+            extra("Alpha", x: -19500), extra("Beta", x: -9500), extra("Gamma", x: 1100),
+        ]
+        let items = service(list, separators: seps, extras: extras).currentItems()
         XCTAssertEqual(items.map(\.appName), ["Alpha", "Beta", "Gamma"])
         XCTAssertEqual(items.map(\.section), [.alwaysHidden, .hidden, .visible])
+        XCTAssertEqual(items.map(\.windowID), [1, 2, 3])
+        XCTAssertEqual(items.map(\.bundleID), ["com.test.Alpha", "com.test.Beta", "com.test.Gamma"])
+    }
+
+    func testOffscreenWindowsNobodyClaimsAreDropped() {
+        let list = [window("Control Center", x: -8673, width: 38, id: 1, onscreen: false)]
+        XCTAssertTrue(service(list, separators: nil).currentItems().isEmpty)
+    }
+
+    func testWithoutAccessibilityOnscreenItemsFallBackToTheWindowOwner() {
+        let list = [window("Control Center", x: 1090, width: 40, id: 3)]
+        XCTAssertEqual(service(list, separators: nil).currentItems().map(\.appName), ["Control Center"])
+    }
+
+    func testIdentifierMakesTheIdentityStable() {
+        let list = [window("Control Center", x: 100, width: 40, id: 1), window("Control Center", x: 200, width: 40, id: 2)]
+        let extras = [
+            ExtrasMenuItem(pid: 3, appName: "Control Center", bundleID: "com.apple.controlcenter", label: "Wi-Fi, 3 bars",
+                           identifier: "com.apple.menuextra.wifi", frame: CGRect(x: 110, y: 5, width: 20, height: 22)),
+            ExtrasMenuItem(pid: 3, appName: "Control Center", bundleID: "com.apple.controlcenter", label: "Battery",
+                           identifier: "com.apple.menuextra.battery", frame: CGRect(x: 210, y: 5, width: 20, height: 22)),
+        ]
+        let ids = WindowListItemService.items(from: list, extras: extras).map(\.id)
+        XCTAssertEqual(ids, ["com.apple.controlcenter|com.apple.menuextra.wifi", "com.apple.controlcenter|com.apple.menuextra.battery"])
     }
 
     func testOwnItemsAreExcluded() {

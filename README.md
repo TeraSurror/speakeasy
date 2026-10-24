@@ -2,7 +2,7 @@
 
 A native macOS menu bar manager. See `Speakeasy — macOS Menu Bar Manager Spec.md`.
 
-Status: **Milestone 1 (MVP)** implemented.
+Status: **Milestone 1 (MVP)** and **Milestone 2** (F8, F9, F10, F12) implemented. F11 (search) was deliberately skipped.
 
 ## Build and run
 
@@ -32,6 +32,21 @@ Requires macOS 14+. Bundle ID: `com.harshshelar.speakeasy`.
 | F5 | On a notched Mac, fill the menu bar until items reach the notch: a red dot appears on the glass. Click the glass: an explanation popover lists the apps. Right-click menu has "Items Hidden by the Notch…". On a non-notched display nothing appears. |
 | F6 | Settings → General → Launch at login is off by default; toggling it appears in System Settings → General → Login Items; the toggle reflects changes made there. |
 | F7 | Right-click the glass → Settings… opens General / Appearance / Hotkeys / About; right-click → Quit quits. About → Copy Diagnostics puts a report on the clipboard. |
+
+## M2 manual verification
+
+| Feature | Check |
+| --- | --- |
+| F10 | Settings → Layout shows an explainer until Accessibility is granted (nothing is requested at launch). After granting, drag an item between the Visible / Hidden / Always Hidden columns (or right-click → Move to…): the section slides open, the item is ⌘-dragged in the real bar, and the pointer returns. A wrong landing is retried once, then an error shows. "Move overflow from notch" moves notch-covered items to Hidden; an item completely behind the notch can't be grabbed and reports an error. |
+
+## Notes on item discovery (macOS 26)
+
+On macOS 26 every status item window is owned by Control Center, so the window list alone can't say which app an item
+belongs to. With Accessibility granted, Speakeasy reads each app's `AXExtrasMenuBar` for ownership, labels and
+positions (including items pushed off-screen) and matches them to windows by position. Without it, only on-screen items
+appear, all attributed to Control Center. Because `build.sh` signs ad hoc, **every rebuild changes the app's identity and
+macOS drops the Accessibility grant**: remove and re-add Speakeasy in System Settings → Privacy & Security → Accessibility
+after rebuilding.
 
 ## Known limitations (M1)
 

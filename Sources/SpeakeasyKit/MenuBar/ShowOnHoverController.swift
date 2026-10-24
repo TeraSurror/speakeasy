@@ -26,7 +26,7 @@ public enum HoverZone {
 /// Reveals the hidden section when the pointer rests on empty menu bar space for `dwell` seconds.
 @MainActor
 public final class ShowOnHoverController {
-    public static let defaultDwell: TimeInterval = 0.3
+    public nonisolated static let defaultDwell: TimeInterval = 0.3
 
     private let monitor: PointerMonitoring
     private let screens: ScreenProviding

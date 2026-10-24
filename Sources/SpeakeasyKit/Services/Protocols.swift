@@ -35,6 +35,34 @@ public protocol WindowListing {
     func windowInfo() -> [[String: Any]]
 }
 
+/// One item from an app's `AXExtrasMenuBar`. On macOS 26 every status item window is owned by Control Center,
+/// so this is the only way to learn which app an item belongs to. It also reports items pushed off-screen.
+public struct ExtrasMenuItem: Equatable, Sendable {
+    public var pid: Int32
+    public var appName: String
+    public var bundleID: String?
+    /// The item's title or description, e.g. "Battery".
+    public var label: String?
+    /// A stable identifier such as `com.apple.menuextra.battery`, when the app provides one.
+    public var identifier: String?
+    /// Global coordinates, origin top-left of the primary display.
+    public var frame: CGRect
+
+    public init(pid: Int32, appName: String, bundleID: String? = nil, label: String? = nil, identifier: String? = nil, frame: CGRect) {
+        self.pid = pid
+        self.appName = appName
+        self.bundleID = bundleID
+        self.label = label
+        self.identifier = identifier
+        self.frame = frame
+    }
+}
+
+public protocol ExtrasMenuBarReading {
+    /// Empty when Accessibility hasn't been granted.
+    func extrasItems() -> [ExtrasMenuItem]
+}
+
 /// Where Speakeasy's own status items are, so other items can be assigned to sections.
 @MainActor
 public protocol SeparatorLocating: AnyObject {
@@ -62,6 +90,70 @@ public protocol PointerMonitoring: AnyObject {
     @MainActor var onMove: ((CGPoint) -> Void)? { get set }
     @MainActor func start()
     @MainActor func stop()
+}
+
+/// Accessibility is needed to post synthetic mouse events (F10). Never prompted for at launch.
+public protocol AccessibilityPermission {
+    var isTrusted: Bool { get }
+    /// Shows the system prompt. Callers explain why first.
+    func requestPrompt()
+}
+
+public struct SyntheticMouseEvent: Equatable, Sendable {
+    public enum Kind: Sendable { case move, down, dragged, up }
+    public var kind: Kind
+    public var location: CGPoint
+    /// Whether ⌘ is held; macOS only lets you rearrange status items with ⌘-drag.
+    public var command: Bool
+
+    public init(_ kind: Kind, at location: CGPoint, command: Bool = true) {
+        self.kind = kind
+        self.location = location
+        self.command = command
+    }
+}
+
+public protocol EventPosting {
+    @MainActor var cursorLocation: CGPoint { get }
+    @MainActor func post(_ event: SyntheticMouseEvent)
+    @MainActor func warpCursor(to location: CGPoint)
+}
+
+public enum MoveFailure: Error, Equatable, Sendable {
+    case noPermission
+    case busy
+    case itemNotFound
+    case separatorsUnavailable
+    /// The item is hidden behind the notch (or otherwise off-screen) so there is nothing to grab.
+    case notReachable
+    case didNotLand(actual: Section?)
+
+    public var message: String {
+        switch self {
+        case .noPermission: "Speakeasy needs Accessibility access to move items."
+        case .busy: "Another move is still in progress."
+        case .itemNotFound: "The item is no longer in the menu bar."
+        case .separatorsUnavailable: "Speakeasy's own menu bar items aren't ready yet."
+        case .notReachable: "The item is hidden behind the notch and can't be grabbed. Move another item out of the way first."
+        case .didNotLand: "macOS didn't accept the move. Try again, or ⌘-drag the item yourself."
+        }
+    }
+}
+
+public enum MoveResult: Equatable, Sendable {
+    case moved
+    case failed(MoveFailure)
+}
+
+public protocol ItemMoving {
+    /// Moves the item into `section` with a synthesized ⌘-drag and confirms it landed.
+    @MainActor func move(itemID: String, to section: Section) async -> MoveResult
+}
+
+/// Temporarily reveals every section so all items can be grabbed, and restores the previous state afterwards.
+public protocol LayoutSessionControlling: AnyObject {
+    @MainActor func beginLayoutSession()
+    @MainActor func endLayoutSession()
 }
 
 public protocol LoginItemControlling {

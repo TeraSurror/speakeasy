@@ -4,7 +4,7 @@ import SwiftUI
 
 /// Composition root: wires the services to the menu bar. No macOS API is called directly from SwiftUI views.
 @MainActor
-final class AppController {
+final class AppController: LayoutSessionControlling {
     let model: AppModel
 
     private let scheduler: Scheduling = DispatchScheduler()
@@ -12,6 +12,7 @@ final class AppController {
     private var itemService: MenuBarItemService?
     private var itemObserver: ItemChangeObserving?
     private var hover: ShowOnHoverController?
+    private var layoutSession: (wasHidden: Bool, wasAlwaysRevealed: Bool)?
     private let hotkeys: HotkeyRegistering
     private let detector = NotchDetector()
     private let outsideMonitor = OutsideInteractionMonitor()
@@ -47,7 +48,7 @@ final class AppController {
         sections.onHiddenChanged = { [weak self] hidden in self?.hiddenChanged(hidden) }
         // Revealing or collapsing the always-hidden section follows the same auto-rehide rules as F3.
         sections.onAlwaysHiddenChanged = { [weak self] _ in
-            self?.rehide?.arm()
+            if self?.layoutSession == nil { self?.rehide?.arm() }
             self?.scheduleNotchRefresh(after: 0.5)
         }
 
@@ -68,6 +69,14 @@ final class AppController {
             .store(in: &cancellables)
 
         sections.start(restoringHidden: settings.isHidden)
+
+        let permission = SystemAccessibilityPermission()
+        model.accessibility = permission
+        model.mover = ItemMover(
+            permission: permission, events: CGEventPoster(), items: itemService!, separators: host,
+            screens: screens, session: self)
+        model.refreshItems = { [weak self] in self?.scheduleNotchRefresh(after: 0.2) }
+        model.iconProvider = { item in NSRunningApplication(processIdentifier: item.pid)?.icon }
 
         hover = ShowOnHoverController(
             monitor: NSEventPointerMonitor(), screens: screens, scheduler: scheduler,
@@ -92,15 +101,16 @@ final class AppController {
         updateHover(showOnHover: settings.showOnHover)
         sections?.update(icon: settings.toggleIcon, showSeparator: settings.showSeparator, animates: settings.animateTransitions)
         rehide?.delay = settings.rehideEnabled ? settings.rehideDelay : nil
-        if sections?.isHidden == false {
+        if sections?.isHidden == false && layoutSession == nil {
             rehide?.arm()
             updateOutsideMonitor(shown: true, enabled: settings.rehideOnClickOutside)
         }
     }
 
     private func hiddenChanged(_ hidden: Bool) {
-        model.settings.isHidden = hidden
         updateHover(isHidden: hidden)
+        if layoutSession != nil { return } // the session restores the real state when it ends
+        model.settings.isHidden = hidden
         if hidden {
             rehide?.disarm()
             outsideMonitor.stop()
@@ -108,6 +118,32 @@ final class AppController {
             rehide?.arm()
             updateOutsideMonitor(shown: true, enabled: model.settings.rehideOnClickOutside)
         }
+        scheduleNotchRefresh(after: 0.5)
+    }
+
+    // MARK: Layout session
+
+    func beginLayoutSession() {
+        guard layoutSession == nil, let sections else { return }
+        layoutSession = (sections.isHidden, sections.isAlwaysHiddenRevealed)
+        rehide?.disarm()
+        outsideMonitor.stop()
+        sections.showAlwaysHidden()
+    }
+
+    func endLayoutSession() {
+        guard let session = layoutSession else { return }
+        layoutSession = nil
+        if session.wasHidden {
+            sections?.hide()
+        } else if !session.wasAlwaysRevealed {
+            sections?.hideAlwaysHidden()
+        }
+        if sections?.isHidden == false {
+            rehide?.arm()
+            updateOutsideMonitor(shown: true, enabled: model.settings.rehideOnClickOutside)
+        }
+        updateHover()
         scheduleNotchRefresh(after: 0.5)
     }
 
@@ -196,7 +232,8 @@ final class AppController {
         guard let itemService else { return }
         let items = itemService.currentItems()
         if items != model.items {
-            Log.discovery.info("Discovered \(items.count) items")
+            let summary = items.map { "\($0.appName)[\($0.title ?? "-")]=\($0.section.rawValue)" }.joined(separator: ", ")
+            Log.discovery.info("Discovered \(items.count) items: \(summary, privacy: .public)")
             model.items = items
         }
         let affected = detector.overflowingItems(in: items, screens: screens.screens)

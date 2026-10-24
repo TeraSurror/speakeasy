@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Speakeasy: User Guide</title>
+<meta name="description" content="How to use Speakeasy, the macOS menu bar manager.">
+<style>
+:root {
+  --bg: #fbfaf8; --fg: #1d1b20; --muted: #6b6772; --card: #ffffff; --line: #e4e0e8;
+  --accent: #6d4aff; --accent-soft: #efeaff; --code-bg: #f1eff5; --pre-bg: #1e1b26; --pre-fg: #ece9f5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15131a; --fg: #ece9f2; --muted: #a29eac; --card: #1e1b26; --line: #332f3d;
+    --accent: #a995ff; --accent-soft: #2a2442; --code-bg: #2a2635; --pre-bg: #0f0d14; --pre-fg: #ece9f5;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15131a; --fg: #ece9f2; --muted: #a29eac; --card: #1e1b26; --line: #332f3d;
+  --accent: #a995ff; --accent-soft: #2a2442; --code-bg: #2a2635; --pre-bg: #0f0d14; --pre-fg: #ece9f5;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 1.5rem; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+.layout { display: grid; grid-template-columns: 17rem minmax(0, 1fr); max-width: 72rem; margin: 0 auto; }
+nav {
+  position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto;
+  padding: 2rem 1rem 2rem 1.5rem; border-right: 1px solid var(--line);
+}
+nav .brand { font-weight: 700; font-size: 1.1rem; display: flex; align-items: center; gap: .5rem; margin-bottom: 1.25rem; }
+nav a { display: block; padding: .3rem .6rem; border-radius: 6px; color: var(--muted); text-decoration: none; font-size: .92rem; }
+nav a:hover { background: var(--accent-soft); color: var(--accent); }
+main { padding: 2.5rem clamp(1rem, 4vw, 3rem) 5rem; min-width: 0; }
+main > * { max-width: 46rem; }
+h1 { font-size: 2.2rem; line-height: 1.2; margin: 0 0 .5rem; }
+h2 { font-size: 1.5rem; margin: 3rem 0 .75rem; padding-top: 1.5rem; border-top: 1px solid var(--line); }
+h3 { font-size: 1.12rem; margin: 2rem 0 .5rem; }
+a { color: var(--accent); }
+p, li { margin: .6rem 0; }
+ul, ol { padding-left: 1.4rem; }
+code { background: var(--code-bg); padding: .12em .4em; border-radius: 5px; font: .88em ui-monospace, SFMono-Regular, Menlo, monospace; }
+pre { background: var(--pre-bg); color: var(--pre-fg); padding: 1rem 1.2rem; border-radius: 10px; overflow-x: auto; }
+pre code { background: none; padding: 0; color: inherit; font-size: .86rem; }
+blockquote { margin: 1rem 0; padding: .1rem 1rem; background: var(--accent-soft); border-left: 4px solid var(--accent); border-radius: 0 8px 8px 0; }
+.table { overflow-x: auto; margin: 1rem 0; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+table { border-collapse: collapse; width: 100%; font-size: .94rem; }
+th, td { text-align: left; padding: .6rem .85rem; vertical-align: top; border-bottom: 1px solid var(--line); }
+th { font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+.theme { position: fixed; top: 1rem; right: 1rem; border: 1px solid var(--line); background: var(--card); color: var(--fg);
+  border-radius: 999px; padding: .35rem .8rem; cursor: pointer; font: inherit; font-size: .85rem; }
+@media (max-width: 52rem) {
+  .layout { display: block; }
+  nav { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: 1rem; }
+  nav .links { display: flex; flex-wrap: wrap; gap: .25rem; }
+  main { padding: 1.5rem 1rem 4rem; }
+  .theme { top: .5rem; right: .5rem; }
+}
+</style>
+</head>
+<body>
+<button class="theme" id="theme" type="button" aria-label="Toggle dark mode">Theme</button>
+<div class="layout">
+<nav aria-label="Contents">
+  <div class="brand">🍸 Speakeasy</div>
+  <div class="links">
+    <a href="#install-and-first-launch">Install and first launch</a>
+    <a href="#the-basics">The basics</a>
+    <a href="#arranging-your-icons">Arranging your icons</a>
+    <a href="#the-always-hidden-section">The always hidden section</a>
+    <a href="#showing-and-hiding-automatically">Showing and hiding automatically</a>
+    <a href="#the-notch-warning">The notch warning</a>
+    <a href="#the-layout-screen">The Layout screen</a>
+    <a href="#settings-reference">Settings reference</a>
+    <a href="#keyboard-shortcuts">Keyboard shortcuts</a>
+    <a href="#permissions">Permissions</a>
+    <a href="#troubleshooting">Troubleshooting</a>
+    <a href="#what-is-not-included">What is not included</a>
+  </div>
+</nav>
+<main>
+<h1>Speakeasy: User Guide</h1>
+<p>Speakeasy is a macOS menu bar manager. It hides the status icons you rarely need behind a glass icon, keeps every icon reachable (even ones that would disappear behind the notch), and lets you rearrange them without leaving the keyboard.</p>
+<ul><li><strong>Requires:</strong> macOS 14 Sonoma or later (developed on macOS 26)</li><li><strong>Runs as:</strong> a menu bar only app (no Dock icon)</li><li><strong>Privacy:</strong> no network access, no analytics. Everything stays on your Mac.</li></ul>
+<h2 id="contents">Contents</h2>
+<ol><li><a href="#install-and-first-launch">Install and first launch</a></li><li><a href="#the-basics">The basics</a></li><li><a href="#arranging-your-icons">Arranging your icons</a></li><li><a href="#the-always-hidden-section">The always hidden section</a></li><li><a href="#showing-and-hiding-automatically">Showing and hiding automatically</a></li><li><a href="#the-notch-warning">The notch warning</a></li><li><a href="#the-layout-screen">The Layout screen</a></li><li><a href="#settings-reference">Settings reference</a></li><li><a href="#keyboard-shortcuts">Keyboard shortcuts</a></li><li><a href="#permissions">Permissions</a></li><li><a href="#troubleshooting">Troubleshooting</a></li><li><a href="#what-is-not-included">What is not included</a></li></ol>
+<h2 id="install-and-first-launch">Install and first launch</h2>
+<p>Speakeasy is built from source and is not on the Mac App Store (sandboxing blocks the APIs it needs).</p>
+<pre><code class="language-sh">git clone git@github.com:TeraSurror/speakeasy.git
+cd speakeasy
+swift test        # optional: run the unit tests
+./build.sh        # builds build/Speakeasy.app, ad-hoc signed
+open build/Speakeasy.app</code></pre>
+<p>On first launch a <strong>Welcome</strong> window shows how to ⌘-drag icons. You can reopen it any time from the glass icon's right-click menu (<strong>Welcome Guide…</strong>).</p>
+<p>To start Speakeasy automatically, turn on <strong>Settings → General → Launch at login</strong>.</p>
+<h2 id="the-basics">The basics</h2>
+<p>Speakeasy adds three small items to your menu bar:</p>
+<div class="table"><table><thead><tr><th>Item</th><th>What it is</th></tr></thead><tbody><tr><td><strong>Glass icon</strong> (rightmost)</td><td>The toggle. Click it to show or hide the hidden section.</td></tr><tr><td><strong>Thin divider</strong> <code>|</code></td><td>The separator. Icons to its <strong>left</strong> are hidden; icons to its right stay visible.</td></tr><tr><td><strong>Second divider</strong> (further left)</td><td>The always hidden separator (see <a href="#the-always-hidden-section">below</a>).</td></tr></tbody></table></div>
+<p>When the hidden section is collapsed, the dividers are invisible and the icons to their left are pushed off screen. Click the glass to slide them back in.</p>
+<p><strong>Right-click the glass</strong> for the menu: Show or Hide Items, Show or Hide Always-Hidden Items, Settings…, Welcome Guide…, and Quit Speakeasy.</p>
+<h2 id="arranging-your-icons">Arranging your icons</h2>
+<p>macOS lets you rearrange menu bar icons by holding <strong>⌘</strong> and dragging them. Speakeasy uses this:</p>
+<ol><li>Hold <strong>⌘</strong> and drag an icon to the <strong>left</strong> of the divider. It becomes hidden.</li><li>To make a hidden icon visible again, reveal the hidden section, then ⌘-drag the icon to the <strong>right</strong> of the divider.</li></ol>
+<p>Speakeasy's own items remember their positions between launches. You can also move icons from the <a href="#the-layout-screen">Layout screen</a> without dragging in the menu bar yourself.</p>
+<blockquote><p><strong>Tip:</strong> Don't drag the glass icon to the left of a divider. If you do, Speakeasy refuses to hide anything, so the glass can never disappear.</p></blockquote>
+<h2 id="the-always-hidden-section">The always hidden section</h2>
+<p>Anything to the left of the <strong>second divider</strong> is <em>always hidden</em>: it stays hidden even when you show the normal hidden section. Use it for icons you almost never need.</p>
+<ul><li><strong>⌥-click</strong> the glass, or press <strong>⌥⌘⇧B</strong>, to reveal everything, including the always hidden section.</li><li>Do the same again to collapse only the always hidden section; the normal hidden section stays open.</li><li>The same auto-hide rules apply (below).</li></ul>
+<h2 id="showing-and-hiding-automatically">Showing and hiding automatically</h2>
+<h3 id="auto-hide">Auto-hide</h3>
+<p>After you reveal the hidden section, it collapses by itself after a delay (default <strong>10 s</strong>, adjustable from 2 to 60 s, or off).</p>
+<ul><li>The timer <strong>pauses while a menu from a revealed icon is open</strong>, then starts again when the menu closes.</li><li>With <strong>Hide when I click away</strong> on (default), the section also collapses when you click outside the menu bar or switch to another app.</li></ul>
+<h3 id="show-on-hover-optional">Show on hover (optional)</h3>
+<p>Turn on <strong>Settings → General → Show on hover</strong> and rest the pointer on empty menu bar space for about 0.3 seconds to reveal the hidden section.</p>
+<ul><li>It never triggers over an app's menu titles, over the notch, or over your icons and the glass.</li><li>On notched displays the trigger zone is the empty area right of the notch. On other displays it is the right half of the bar.</li></ul>
+<h2 id="the-notch-warning">The notch warning</h2>
+<p>On Macs with a notch, icons that don't fit can end up behind it. When Speakeasy detects this, a <strong>red dot</strong> appears on the glass.</p>
+<ul><li>Click the glass: a popover lists the affected apps and suggests moving them into the hidden section.</li><li>The right-click menu also has <strong>Items Hidden by the Notch…</strong>.</li><li>On displays without a notch nothing appears.</li></ul>
+<h2 id="the-layout-screen">The Layout screen</h2>
+<p><strong>Settings → Layout</strong> lists every menu bar icon in three columns: <strong>Visible</strong>, <strong>Hidden</strong>, and <strong>Always Hidden</strong>.</p>
+<ul><li><strong>Drag</strong> an item to another column, or <strong>right-click</strong> it and choose <strong>Move to…</strong>. VoiceOver users get the same choices as actions.</li><li>Speakeasy does the move in the real menu bar for you: it opens the sections, ⌘-drags the icon, checks that it landed (retrying once if not), puts the pointer back where it was, and restores the previous hidden state.</li><li><strong>Move overflow from notch</strong> moves icons covered by the notch into Hidden. An icon completely behind the notch cannot be grabbed and reports an error; move another icon out of the way first.</li><li>A warning triangle marks items hidden by the notch.</li><li>Items that Control Center owns appear with their real names (Battery, Wi‑Fi, Clock…).</li></ul>
+<p>The Layout screen needs <a href="#permissions">Accessibility access</a>. Until it's granted, the screen explains why and offers a <strong>Grant Access…</strong> button.</p>
+<h2 id="settings-reference">Settings reference</h2>
+<p>Open Settings from the glass icon's right-click menu.</p>
+<h3 id="general">General</h3>
+<div class="table"><table><thead><tr><th>Setting</th><th>Meaning</th></tr></thead><tbody><tr><td>Hide automatically</td><td>Collapse the hidden section after a delay.</td></tr><tr><td>Delay</td><td>2–60 seconds.</td></tr><tr><td>Hide when I click away</td><td>Collapse when you click outside the menu bar or switch apps.</td></tr><tr><td>Show on hover</td><td>Reveal the hidden section by resting the pointer on empty bar space.</td></tr><tr><td>Launch at login</td><td>Starts Speakeasy at login. Reflects the real system state, even if you change it in System Settings → General → Login Items.</td></tr><tr><td>Welcome guide</td><td>Shows the ⌘-drag tutorial again.</td></tr></tbody></table></div>
+<h3 id="layout">Layout</h3>
+<p>See <a href="#the-layout-screen">The Layout screen</a>.</p>
+<h3 id="appearance">Appearance</h3>
+<div class="table"><table><thead><tr><th>Setting</th><th>Meaning</th></tr></thead><tbody><tr><td>Toggle icon</td><td>Martini glass (default), chevron, or dot.</td></tr><tr><td>Slide animation</td><td>Icons glide in and out. Automatically off when <strong>Reduce Motion</strong> is on.</td></tr><tr><td>Divider</td><td>Show a thin line between hidden and visible items while revealed.</td></tr><tr><td>Icon spacing</td><td>Space between menu bar icons for <strong>every</strong> app (2–16 pt). Smaller values fit more icons.</td></tr></tbody></table></div>
+<p><strong>Icon spacing</strong> changes macOS settings (<code>NSStatusItemSpacing</code> and <code>NSStatusItemSelectionPadding</code>), so it only takes effect after the menu bar restarts:</p>
+<ol><li>Move the slider and release.</li><li>Click <strong>Restart menu bar</strong> (the bar blinks briefly) or log out and back in.</li><li><strong>Reset to default</strong> removes the overrides; restart the menu bar again to see the original spacing.</li></ol>
+<h3 id="hotkeys">Hotkeys</h3>
+<p>Click a recorder and press the shortcut you want. If it clashes with a macOS system shortcut, a warning appears. Clashes with other apps' global shortcuts can't be detected.</p>
+<h3 id="about">About</h3>
+<p>Shows the version and a Quit button. <strong>Copy Diagnostics</strong> puts a report on the clipboard that you can paste into a bug report.</p>
+<h2 id="keyboard-shortcuts">Keyboard shortcuts</h2>
+<div class="table"><table><thead><tr><th>Shortcut</th><th>Action</th><th>Customizable</th></tr></thead><tbody><tr><td><strong>⌥⌘B</strong></td><td>Show or hide the hidden section</td><td>Yes (Hotkeys)</td></tr><tr><td><strong>⌥⌘⇧B</strong></td><td>Show or hide the always hidden section</td><td>Yes (Hotkeys)</td></tr><tr><td><strong>⌥-click</strong> the glass</td><td>Show or hide the always hidden section</td><td>No</td></tr><tr><td><strong>Right-click</strong> or <strong>⌃-click</strong> the glass</td><td>Open the menu</td><td>No</td></tr><tr><td><strong>⌘-drag</strong> an icon</td><td>Rearrange it (built into macOS)</td><td>No</td></tr><tr><td><strong>⌘W</strong> / <strong>⌘Q</strong></td><td>Close the settings window / quit</td><td>No</td></tr></tbody></table></div>
+<h2 id="permissions">Permissions</h2>
+<p>Speakeasy never asks for a permission at launch. It asks only when you use a feature that needs it, and explains why first.</p>
+<div class="table"><table><thead><tr><th>Permission</th><th>Needed for</th><th>If you decline</th></tr></thead><tbody><tr><td><strong>Accessibility</strong></td><td>The Layout screen (moving icons, and reading which app owns each icon)</td><td>Everything else works. You can still ⌘-drag icons yourself. Without it, the Layout screen can't list hidden items, and on macOS 26 icons appear as "Control Center".</td></tr></tbody></table></div>
+<p>To grant it: <strong>Layout → Grant Access…</strong>, then switch Speakeasy on in <strong>System Settings → Privacy &amp; Security → Accessibility</strong>.</p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<p><strong>The Layout screen shows only "Control Center", or hidden items are missing.</strong> Accessibility access is off or out of date. On macOS 26 every menu bar icon belongs to Control Center as far as the window list is concerned; Speakeasy reads the real owners through Accessibility.</p>
+<p><strong>I rebuilt Speakeasy and Accessibility stopped working.</strong> <code>build.sh</code> signs the app ad hoc, so every rebuild looks like a new app to macOS. In <strong>System Settings → Privacy &amp; Security → Accessibility</strong>, select Speakeasy and click <strong>−</strong>, then add the new build (or use <strong>Grant Access…</strong> again). If the old entry lingers:</p>
+<pre><code class="language-sh">tccutil reset Accessibility com.harshshelar.speakeasy</code></pre>
+<p><strong>An icon won't move from the Layout screen.</strong> Speakeasy retries once, then shows an error. Try again, or ⌘-drag it yourself. Icons completely behind the notch can't be grabbed.</p>
+<p><strong>Icons I hid are gone and I can't find the glass.</strong> Quit and relaunch Speakeasy. On launch it always collapses the dividers to their normal size before restoring your hidden state, so nothing is left stranded off screen.</p>
+<p><strong>Icon spacing didn't change.</strong> Click <strong>Restart menu bar</strong>, or log out and back in. The spacing is read by macOS only when the menu bar starts.</p>
+<p><strong>The glass shows a red dot but I see no problem.</strong> Items overlap the notch area. Click the glass to see which apps, then hide some of them.</p>
+<p><strong>Reporting a bug.</strong> Open <strong>Settings → About → Copy Diagnostics</strong> and paste the report into your issue. For live logs:</p>
+<pre><code class="language-sh">/usr/bin/log stream --level info --predicate &#x27;subsystem == &quot;com.harshshelar.speakeasy&quot;&#x27;</code></pre>
+<p>Use <code>/usr/bin/log</code> explicitly: in zsh, plain <code>log</code> is a shell builtin.</p>
+<h2 id="what-is-not-included">What is not included</h2>
+<p>Some features in the original plan were deliberately left out: <strong>search</strong> (a hotkey that lists and clicks any icon), <strong>rules</strong> (show icons on conditions such as battery or Wi‑Fi), <strong>profiles</strong> (named layouts), and <strong>presentation mode</strong>. See the project spec in the repository for details.</p>
+</main>
+</div>
+<script>
+(function () {
+  var root = document.documentElement, key = "speakeasy-docs-theme";
+  try { var saved = localStorage.getItem(key); if (saved) root.dataset.theme = saved; } catch (e) {}
+  document.getElementById("theme").addEventListener("click", function () {
+    var dark = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    root.dataset.theme = dark ? "light" : "dark";
+    try { localStorage.setItem(key, root.dataset.theme); } catch (e) {}
+  });
+})();
+</script>
+</body>
+</html>

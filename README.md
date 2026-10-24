@@ -4,6 +4,8 @@ A native macOS menu bar manager. See `Speakeasy — macOS Menu Bar Manager Spec.
 
 Status: **Milestone 1 (MVP)** and **Milestone 2** (F8, F9, F10, F12) and F16 (icon spacing) from Milestone 3 implemented. F11 (search) and F13–F15 were deliberately skipped.
 
+User guide: [`docs/USAGE.md`](docs/USAGE.md) (also published as a web page by the Docs workflow, see below).
+
 ## Build and run
 
 ```
@@ -13,6 +15,12 @@ open build/Speakeasy.app
 ```
 
 Requires macOS 14+. Bundle ID: `com.harshshelar.speakeasy`.
+
+## Documentation
+
+`docs/USAGE.md` is the source. `docs/index.html` is generated from it (`python3 docs/build_html.py`), and the
+`Docs` GitHub Actions workflow regenerates and publishes `docs/` to GitHub Pages on every push to `main` that touches it.
+One-time setup: repository Settings → Pages → Source: **GitHub Actions**.
 
 ## Layout
 

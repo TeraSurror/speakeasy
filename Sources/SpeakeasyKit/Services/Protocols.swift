@@ -25,13 +25,43 @@ public protocol MenuOpenDetecting {
     @MainActor var isMenuOpen: Bool { get }
 }
 
-/// Enumerates status item windows. M2 grows this into full discovery (F9).
+/// Discovers every status item, including ones currently pushed off-screen, with its section (F9).
 public protocol MenuBarItemService {
-    func currentItems() -> [MenuBarItem]
+    @MainActor func currentItems() -> [MenuBarItem]
+}
+
+/// Raw `CGWindowListCopyWindowInfo` dictionaries for all windows.
+public protocol WindowListing {
+    func windowInfo() -> [[String: Any]]
+}
+
+/// Where Speakeasy's own status items are, so other items can be assigned to sections.
+@MainActor
+public protocol SeparatorLocating: AnyObject {
+    /// Nil until the separators have been laid out.
+    var separatorFrames: SeparatorFrames? { get }
+    /// Window IDs of Speakeasy's own status items, excluded from discovery.
+    var ownWindowIDs: Set<UInt32> { get }
+}
+
+/// Reports that the set of status items may have changed (app launch/quit, display change).
+/// Changes are debounced; consumers re-read items in response and never poll.
+public protocol ItemChangeObserving: AnyObject {
+    @MainActor var onChange: (() -> Void)? { get set }
+    @MainActor func start()
+    @MainActor func stop()
 }
 
 public protocol ScreenProviding {
     @MainActor var screens: [ScreenInfo] { get }
+}
+
+/// Reports the global pointer position (CoreGraphics space, origin top-left of the primary display).
+/// Only running while someone needs it, so it costs nothing otherwise.
+public protocol PointerMonitoring: AnyObject {
+    @MainActor var onMove: ((CGPoint) -> Void)? { get set }
+    @MainActor func start()
+    @MainActor func stop()
 }
 
 public protocol LoginItemControlling {
@@ -41,6 +71,7 @@ public protocol LoginItemControlling {
 
 public enum HotkeyAction: Sendable {
     case toggleHiddenSection
+    case toggleAlwaysHidden
 }
 
 public protocol HotkeyRegistering {

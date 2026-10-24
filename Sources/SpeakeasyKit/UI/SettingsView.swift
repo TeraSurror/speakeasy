@@ -100,6 +100,15 @@ private struct GeneralTab: View {
             }
 
             SwiftUI.Section {
+                SettingRow(symbol: "cursorarrow.motionlines", color: .teal, title: "Show on hover",
+                           detail: "Rest the pointer on empty menu bar space to reveal the hidden items.") {
+                    switchToggle("Show on hover", isOn: $model.settings.showOnHover)
+                }
+            } header: {
+                Text("Reveal")
+            }
+
+            SwiftUI.Section {
                 SettingRow(symbol: "power", color: .green, title: "Launch at login",
                            detail: model.launchAtLoginError ?? "Open Speakeasy automatically when you log in.") {
                     switchToggle("Launch at login", isOn: Binding(
@@ -207,6 +216,10 @@ private struct HotkeysTab: View {
                     KeyboardShortcuts.Recorder(for: .toggleHiddenSection) { _ in
                         model.refreshHotkeyConflict()
                     }
+                }
+                SettingRow(symbol: "lock.open", color: .purple, title: "Show / hide always-hidden items",
+                           detail: "Reveals the always-hidden section too. Default is ⌥⌘⇧B; ⌥-clicking the icon does the same.") {
+                    KeyboardShortcuts.Recorder(for: .toggleAlwaysHidden)
                 }
                 if let conflict = model.hotkeyConflict {
                     Label(conflict, systemImage: "exclamationmark.triangle.fill")

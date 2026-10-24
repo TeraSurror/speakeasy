@@ -27,8 +27,57 @@ final class SectionControllerTests: XCTestCase {
     func testStartWithRevealedStateStaysRevealed() {
         controller.start(restoringHidden: false)
         scheduler.advance(by: 5)
-        XCTAssertEqual(host.rendered.map(\.isHidden), [false])
+        XCTAssertEqual(host.rendered.map(\.isHidden), [false, false])
+        XCTAssertEqual(host.rendered.map(\.alwaysHiddenRevealed), [true, false], "starts fully revealed, then collapses always-hidden")
         XCTAssertTrue(changes.isEmpty)
+    }
+
+    func testAlwaysHiddenRevealsBothSectionsAndNotifies() {
+        var always: [Bool] = []
+        controller.onAlwaysHiddenChanged = { always.append($0) }
+        controller.start(restoringHidden: true)
+        scheduler.advance(by: 1)
+        controller.showAlwaysHidden()
+        XCTAssertFalse(controller.isHidden)
+        XCTAssertTrue(controller.isAlwaysHiddenRevealed)
+        XCTAssertEqual(changes, [true, false])
+        XCTAssertEqual(always, [true])
+    }
+
+    func testHideAlwaysHiddenKeepsHiddenSectionShown() {
+        controller.start(restoringHidden: false)
+        scheduler.advance(by: 1)
+        controller.showAlwaysHidden()
+        controller.hideAlwaysHidden()
+        XCTAssertFalse(controller.isHidden)
+        XCTAssertFalse(controller.isAlwaysHiddenRevealed)
+    }
+
+    func testHidingCollapsesAlwaysHiddenToo() {
+        controller.start(restoringHidden: false)
+        scheduler.advance(by: 1)
+        controller.showAlwaysHidden()
+        controller.hide()
+        XCTAssertTrue(controller.isHidden)
+        XCTAssertFalse(controller.isAlwaysHiddenRevealed)
+        XCTAssertEqual(host.rendered.last?.alwaysHiddenRevealed, false)
+    }
+
+    func testNeverCollapsesAlwaysHiddenWhenToggleIsLeftOfSeparator() {
+        controller.start(restoringHidden: false)
+        scheduler.advance(by: 1)
+        controller.showAlwaysHidden()
+        host.toggleIsRightOfSeparator = false
+        controller.hideAlwaysHidden()
+        XCTAssertTrue(controller.isAlwaysHiddenRevealed)
+    }
+
+    func testToggleBeforeSettleCancelsRestoreAndCollapsesEverything() {
+        controller.start(restoringHidden: false)
+        controller.hide()
+        scheduler.advance(by: 1)
+        XCTAssertTrue(controller.isHidden)
+        XCTAssertFalse(controller.isAlwaysHiddenRevealed)
     }
 
     func testToggleFlipsAndNotifies() {

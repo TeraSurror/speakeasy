@@ -8,7 +8,7 @@ public enum ToggleClick {
 
 /// Owns the two `NSStatusItem`s. The toggle is created first so the separator lands to its left.
 @MainActor
-public final class StatusItemHost: StatusItemHosting {
+public final class StatusItemHost: StatusItemHosting, SeparatorLocating {
     static let hiddenSeparatorLength: CGFloat = 10_000
     static let dividerLength: CGFloat = 10
     static let invisibleLength: CGFloat = 2
@@ -16,21 +16,22 @@ public final class StatusItemHost: StatusItemHosting {
     public var onToggleClick: ((ToggleClick) -> Void)?
 
     private let toggleItem: NSStatusItem
-    private let separatorItem: NSStatusItem
+    private let separator: SeparatorSlot
+    private let alwaysHiddenSeparator: SeparatorSlot
     private let badgeView: NSView
     private let clickTarget = ClickTarget()
     private var popover: NSPopover?
-    private var lastHidden: Bool?
-    private var latest = ToggleAppearance(icon: .martini, isHidden: false, showSeparator: true)
-    private var animationTarget: Bool?
-    private var animationTimer: Timer?
-    private static let animationDuration: TimeInterval = 0.25
 
     public init() {
         toggleItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         toggleItem.autosaveName = "speakeasy.toggle"
-        separatorItem = NSStatusBar.system.statusItem(withLength: Self.dividerLength)
+        // Created after the toggle and the separator, so macOS places it further left.
+        let separatorItem = NSStatusBar.system.statusItem(withLength: Self.dividerLength)
         separatorItem.autosaveName = "speakeasy.separator"
+        let alwaysHiddenItem = NSStatusBar.system.statusItem(withLength: Self.dividerLength)
+        alwaysHiddenItem.autosaveName = "speakeasy.alwaysHiddenSeparator"
+        separator = SeparatorSlot(item: separatorItem)
+        alwaysHiddenSeparator = SeparatorSlot(item: alwaysHiddenItem)
 
         badgeView = NSView(frame: NSRect(x: 0, y: 0, width: 7, height: 7))
         badgeView.wantsLayer = true
@@ -48,6 +49,7 @@ public final class StatusItemHost: StatusItemHosting {
             button.setAccessibilityHelp("Shows or hides the hidden menu bar items. Right-click for settings.")
         }
         separatorItem.button?.setAccessibilityElement(false)
+        alwaysHiddenItem.button?.setAccessibilityElement(false)
     }
 
     // MARK: StatusItemHosting
@@ -60,80 +62,40 @@ public final class StatusItemHost: StatusItemHosting {
         toggleItem.button?.setAccessibilityValue(appearance.isHidden ? "Items hidden" : "Items shown")
         layoutBadge(visible: appearance.hasBadge)
 
-        latest = appearance
-        let changed = lastHidden != nil && lastHidden != appearance.isHidden
-        lastHidden = appearance.isHidden
-        if changed && appearance.animates && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
-            animateSeparator(toHidden: appearance.isHidden)
-        } else if animationTarget == appearance.isHidden {
-            // Already sliding to this state; finishing applies the latest appearance.
-        } else {
-            applySeparator(appearance)
-        }
+        // The always-hidden separator stays collapsed unless that section was explicitly revealed.
+        separator.render(collapsed: appearance.isHidden, appearance: appearance, screenWidth: screenWidth)
+        alwaysHiddenSeparator.render(
+            collapsed: !appearance.alwaysHiddenRevealed, appearance: appearance, screenWidth: screenWidth)
     }
 
     public var toggleIsRightOfSeparator: Bool {
-        guard let toggle = toggleItem.button?.window?.frame,
-              let separator = separatorItem.button?.window?.frame,
-              toggle.width > 0, separator.width > 0 else { return true } // not laid out yet
-        return toggle.minX >= separator.maxX - 1
-    }
-
-    // MARK: Separator
-
-    private func applySeparator(_ appearance: ToggleAppearance) {
-        stopAnimation()
-        if appearance.isHidden {
-            separatorItem.button?.image = nil
-            separatorItem.length = Self.hiddenSeparatorLength
-        } else if appearance.showSeparator {
-            separatorItem.button?.image = Self.dividerImage
-            separatorItem.length = Self.dividerLength
-        } else {
-            separatorItem.button?.image = nil
-            separatorItem.length = Self.invisibleLength
+        guard let toggle = toggleItem.button?.window?.frame else { return true }
+        return [separator, alwaysHiddenSeparator].allSatisfy { slot in
+            guard let frame = slot.item.button?.window?.frame, toggle.width > 0, frame.width > 0 else { return true } // not laid out yet
+            return toggle.minX >= frame.maxX - 1
         }
     }
 
-    private func stopAnimation() {
-        animationTimer?.invalidate()
-        animationTimer = nil
-        animationTarget = nil
+    private var screenWidth: CGFloat {
+        toggleItem.button?.window?.screen?.frame.width ?? NSScreen.main?.frame.width ?? 1600
     }
 
-    /// Items left of the separator are pushed along by its length. Any length of at least the screen
-    /// width has them all off-screen, so we tween between that and the resting length.
-    private func animateSeparator(toHidden hidden: Bool) {
-        stopAnimation()
-        let width = toggleItem.button?.window?.screen?.frame.width ?? NSScreen.main?.frame.width ?? 1600
-        let full = width + 40
-        let rest = latest.showSeparator ? Self.dividerLength : Self.invisibleLength
-        let from = hidden ? rest : full
-        let to = hidden ? full : rest
-        separatorItem.button?.image = nil
-        separatorItem.length = from
-        animationTarget = hidden
+    // MARK: SeparatorLocating
 
-        let start = Date()
-        let timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] timer in
-            MainActor.assumeIsolated {
-                guard let self else { timer.invalidate(); return }
-                let t = min(Date().timeIntervalSince(start) / Self.animationDuration, 1)
-                let eased = t * t * (3 - 2 * t)
-                if t >= 1 {
-                    self.applySeparator(self.latest) // snaps to the exact resting (or fully hidden) length
-                } else {
-                    self.separatorItem.length = from + (to - from) * eased
-                }
-            }
-        }
-        RunLoop.main.add(timer, forMode: .common) // keep running while a menu is tracking
-        animationTimer = timer
+    public var separatorFrames: SeparatorFrames? {
+        guard let toggle = toggleItem.button?.window?.frame, toggle.width > 0,
+              let hidden = separator.item.button?.window?.frame, hidden.width > 0,
+              let always = alwaysHiddenSeparator.item.button?.window?.frame, always.width > 0 else { return nil }
+        return SeparatorFrames(hiddenMinX: hidden.minX, alwaysHiddenMinX: always.minX, toggleMidX: toggle.midX)
+    }
+
+    public var ownWindowIDs: Set<UInt32> {
+        let numbers = [toggleItem, separator.item, alwaysHiddenSeparator.item].compactMap { $0.button?.window?.windowNumber }
+        return Set(numbers.compactMap { UInt32(exactly: $0) })
     }
 
     // MARK: Extras used by the app controller
 
-    var separatorWindowNumber: Int? { separatorItem.button?.window?.windowNumber }
 
     func popUp(_ menu: NSMenu) {
         toggleItem.menu = menu
@@ -171,7 +133,7 @@ public final class StatusItemHost: StatusItemHosting {
         }
     }
 
-    private static let dividerImage: NSImage = {
+    fileprivate static let dividerImage: NSImage = {
         let image = NSImage(size: NSSize(width: 4, height: 14), flipped: false) { rect in
             NSColor.black.withAlphaComponent(0.45).setFill()
             NSBezierPath(roundedRect: NSRect(x: 1.5, y: 0, width: 1, height: rect.height), xRadius: 0.5, yRadius: 0.5).fill()
@@ -187,5 +149,89 @@ private final class ClickTarget: NSObject {
 
     @MainActor @objc func clicked(_ sender: Any?) {
         owner?.handleClick()
+    }
+}
+
+/// One separator status item and its slide animation. Items left of a separator are pushed along by its
+/// length, so any length of at least the screen width has them all off-screen.
+@MainActor
+private final class SeparatorSlot {
+    let item: NSStatusItem
+
+    private static let animationDuration: TimeInterval = 0.25
+    private var lastCollapsed: Bool?
+    private var animationTarget: Bool?
+    private var timer: Timer?
+    private var latest = ToggleAppearance(icon: .martini, isHidden: false, showSeparator: true)
+    private var latestCollapsed = false
+    private var latestWidth: CGFloat = 1600
+
+    init(item: NSStatusItem) {
+        self.item = item
+    }
+
+    func render(collapsed: Bool, appearance: ToggleAppearance, screenWidth: CGFloat) {
+        latest = appearance
+        latestCollapsed = collapsed
+        latestWidth = screenWidth
+        let changed = lastCollapsed != nil && lastCollapsed != collapsed
+        lastCollapsed = collapsed
+        if changed && appearance.animates && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            animate(toCollapsed: collapsed)
+        } else if animationTarget == collapsed {
+            // Already sliding to this state; finishing applies the latest appearance.
+        } else {
+            apply()
+        }
+    }
+
+    private var restLength: CGFloat {
+        latest.showSeparator ? StatusItemHost.dividerLength : StatusItemHost.invisibleLength
+    }
+
+    private func apply() {
+        stopAnimation()
+        if latestCollapsed {
+            item.button?.image = nil
+            item.length = StatusItemHost.hiddenSeparatorLength
+        } else if latest.showSeparator {
+            item.button?.image = StatusItemHost.dividerImage
+            item.length = StatusItemHost.dividerLength
+        } else {
+            item.button?.image = nil
+            item.length = StatusItemHost.invisibleLength
+        }
+    }
+
+    private func stopAnimation() {
+        timer?.invalidate()
+        timer = nil
+        animationTarget = nil
+    }
+
+    private func animate(toCollapsed collapsed: Bool) {
+        stopAnimation()
+        let full = latestWidth + 40
+        let from = collapsed ? restLength : full
+        let to = collapsed ? full : restLength
+        item.button?.image = nil
+        item.length = from
+        animationTarget = collapsed
+
+        let start = Date()
+        let timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] timer in
+            MainActor.assumeIsolated {
+                guard let self else { timer.invalidate(); return }
+                let t = min(Date().timeIntervalSince(start) / Self.animationDuration, 1)
+                let eased = t * t * (3 - 2 * t)
+                if t >= 1 {
+                    self.apply() // snaps to the exact resting (or fully hidden) length
+                } else {
+                    self.item.length = from + (to - from) * eased
+                }
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common) // keep running while a menu is tracking
+        self.timer = timer
     }
 }

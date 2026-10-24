@@ -2,7 +2,7 @@
 
 A native macOS menu bar manager. See `Speakeasy — macOS Menu Bar Manager Spec.md`.
 
-Status: **Milestone 1 (MVP)** and **Milestone 2** (F8, F9, F10, F12) implemented. F11 (search) was deliberately skipped.
+Status: **Milestone 1 (MVP)** and **Milestone 2** (F8, F9, F10, F12) and F16 (icon spacing) from Milestone 3 implemented. F11 (search) and F13–F15 were deliberately skipped.
 
 ## Build and run
 
@@ -38,6 +38,14 @@ Requires macOS 14+. Bundle ID: `com.harshshelar.speakeasy`.
 | Feature | Check |
 | --- | --- |
 | F10 | Settings → Layout shows an explainer until Accessibility is granted (nothing is requested at launch). After granting, drag an item between the Visible / Hidden / Always Hidden columns (or right-click → Move to…): the section slides open, the item is ⌘-dragged in the real bar, and the pointer returns. A wrong landing is retried once, then an error shows. "Move overflow from notch" moves notch-covered items to Hidden; an item completely behind the notch can't be grabbed and reports an error. |
+
+## F16 manual verification
+
+| Check |
+| --- |
+| Settings → Appearance → Icon spacing. Move the slider and release: the "Log out, or restart the menu bar" notice appears and `defaults -currentHost read -g NSStatusItemSpacing` (and `NSStatusItemSelectionPadding`) show the value. |
+| Click "Restart menu bar": the bar blinks, icons come back closer together, the notice disappears. Check Speakeasy's toggle and separators are still in place. |
+| "Reset to default": both keys are gone from `defaults -currentHost read -g`, the slider returns to Default, and another restart restores the original spacing. |
 
 ## Notes on item discovery (macOS 26)
 

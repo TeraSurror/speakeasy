@@ -156,6 +156,16 @@ public protocol LayoutSessionControlling: AnyObject {
     @MainActor func endLayoutSession()
 }
 
+/// The system-wide menu bar item spacing overrides (F16). Changes only take effect once the menu bar restarts.
+public protocol IconSpacingControlling {
+    /// The current override, or nil when the system default is in use.
+    var current: Int? { get }
+    func apply(_ value: Int)
+    /// Deletes both overrides.
+    func reset()
+    func restartMenuBar() throws
+}
+
 public protocol LoginItemControlling {
     var isEnabled: Bool { get }
     func setEnabled(_ enabled: Bool) throws

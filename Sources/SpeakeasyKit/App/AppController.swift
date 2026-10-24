@@ -70,6 +70,7 @@ final class AppController: LayoutSessionControlling {
 
         sections.start(restoringHidden: settings.isHidden)
 
+        model.spacingControl = DefaultsIconSpacing()
         let permission = SystemAccessibilityPermission()
         model.accessibility = permission
         model.mover = ItemMover(

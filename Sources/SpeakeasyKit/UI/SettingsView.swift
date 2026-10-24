@@ -166,8 +166,62 @@ private struct AppearanceTab: View {
             } header: {
                 Text("Behavior")
             }
+
+            IconSpacingSection()
         }
         .formStyle(.grouped)
+    }
+}
+
+private struct IconSpacingSection: View {
+    @EnvironmentObject var model: AppModel
+    @State private var draft = Double(DefaultsIconSpacing.systemDefault)
+
+    private var range: ClosedRange<Double> {
+        Double(DefaultsIconSpacing.range.lowerBound)...Double(DefaultsIconSpacing.range.upperBound)
+    }
+
+    var body: some View {
+        SwiftUI.Section {
+            SettingRow(symbol: "arrow.left.and.right", color: .mint, title: "Spacing",
+                       detail: "Space between menu bar icons for every app. Smaller values fit more icons.") {
+                HStack(spacing: 8) {
+                    Slider(value: $draft, in: range, step: 1) { editing in
+                        if !editing { model.setIconSpacing(Int(draft)) }
+                    }
+                    .frame(width: 150)
+                    .accessibilityLabel("Menu bar icon spacing")
+                    Text(label)
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        .frame(width: 60, alignment: .trailing)
+                }
+            }
+            if model.iconSpacingNeedsRestart {
+                Label("Log out, or restart the menu bar, for the change to take effect.", systemImage: "info.circle.fill")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            if let error = model.iconSpacingError {
+                Label(error, systemImage: "exclamationmark.triangle.fill").font(.callout).foregroundStyle(.orange)
+            }
+            HStack {
+                Button("Restart menu bar") { model.restartMenuBar() }
+                    .help("Restarts Control Center and SystemUIServer. The menu bar disappears briefly.")
+                Button("Reset to default") {
+                    model.resetIconSpacing()
+                    draft = Double(DefaultsIconSpacing.systemDefault)
+                }
+                .disabled(model.iconSpacing == nil)
+            }
+        } header: {
+            Text("Icon spacing")
+        }
+        .onAppear { draft = Double(model.iconSpacing ?? DefaultsIconSpacing.systemDefault) }
+    }
+
+    private var label: String {
+        model.iconSpacing == nil && Int(draft) == DefaultsIconSpacing.systemDefault ? "Default" : "\(Int(draft)) pt"
     }
 }
 

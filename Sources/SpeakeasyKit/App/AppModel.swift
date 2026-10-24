@@ -24,6 +24,14 @@ public final class AppModel: ObservableObject {
     @Published public var moveStatus: MoveStatus = .idle
     @Published public private(set) var accessibilityTrusted = false
 
+    /// The icon spacing override (F16); nil means the system default.
+    @Published public private(set) var iconSpacing: Int?
+    @Published public private(set) var iconSpacingNeedsRestart = false
+    @Published public var iconSpacingError: String?
+
+    var spacingControl: IconSpacingControlling? {
+        didSet { iconSpacing = spacingControl?.current }
+    }
     var mover: ItemMoving?
     var accessibility: AccessibilityPermission? {
         didSet { refreshAccessibility() }
@@ -118,6 +126,36 @@ public final class AppModel: ObservableObject {
             moveStatus = .failed(failures.count == 1 ? first : "\(failures.count) items couldn't be moved. \(first)")
         } else {
             moveStatus = .done(moved == 1 ? "Moved." : "Moved \(moved) items.")
+        }
+    }
+
+    // MARK: Icon spacing (F16)
+
+    public func setIconSpacing(_ value: Int) {
+        guard value != iconSpacing, let spacingControl else { return }
+        spacingControl.apply(value)
+        iconSpacing = spacingControl.current
+        iconSpacingNeedsRestart = true
+        iconSpacingError = nil
+    }
+
+    public func resetIconSpacing() {
+        guard let spacingControl else { return }
+        let hadOverride = iconSpacing != nil
+        spacingControl.reset()
+        iconSpacing = spacingControl.current
+        if hadOverride { iconSpacingNeedsRestart = true }
+        iconSpacingError = nil
+    }
+
+    public func restartMenuBar() {
+        do {
+            try spacingControl?.restartMenuBar()
+            iconSpacingNeedsRestart = false
+            iconSpacingError = nil
+        } catch {
+            iconSpacingError = "Couldn't restart the menu bar: \(error.localizedDescription)"
+            Log.general.error("Menu bar restart failed: \(error.localizedDescription)")
         }
     }
 }

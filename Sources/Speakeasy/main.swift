@@ -1,3 +1,5 @@
 import SpeakeasyKit
 
-SpeakeasyApp.main()
+MainActor.assumeIsolated {
+    SpeakeasyLauncher.run()
+}
